@@ -1,0 +1,33 @@
+/*AUTHOR : ANIKETHA KATAKAM*/
+
+/*display text style*/
+.lead {
+    font-size: 2.00rem;
+    font-weight: 400;
+}
+
+/*buttons alignment is done by this*/
+#buttons{
+
+	width: 50%;
+	position: absolute;
+    left: 24.9%;
+}
+
+/*http://fredericiana.com/2012/11/04/html5-blink-tag/*/
+/*the text blinking effect is given by this style tag*/
+.waiting {
+    animation-duration: 1s;
+    animation-name: blink;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+    animation-timing-function: ease-in-out;
+}
+@keyframes blink {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}

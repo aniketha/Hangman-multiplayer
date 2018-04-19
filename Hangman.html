@@ -1,0 +1,377 @@
+<!-- Author : ANIKETHA KATAKAM -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
+
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+	<link rel="stylesheet" href="style.css" >
+	<script type="text/javascript" src="http://localhost:8080/socket.io/socket.io.js"></script>
+</head>
+<body class="jumbotron text-center">
+
+	<!-- https://stackoverflow.com/questions/29567580/play-a-beep-sound-on-button-click -->
+	<audio id="audio" src="https://www.soundjay.com/button/sounds/button-09.mp3" autostart="false" ></audio>
+	
+	<!-- The landing page div's -->
+	<div id="part1">
+		<h1> HangMan </h1>
+		<div class="col-xs-4"><input id="name" type="text" class="form-control" placeholder="Enter Name"></div>
+	</div>
+	<div id="part2">
+		<input id="single" type="button" class="btn btn-info" value="Single Player">
+		<input id="multi" type="button" class="btn btn-info" value="Two player">
+	</div>
+	<div id="ans" style="display:none"></div>
+	
+	<!-- Single Player screen -->
+	<div id="part3" style="display:none">
+
+		<div id="gameChance" class=""><h5>No. of Chances Left :</h5><p id="count" class="lead">10 </p></div><br>
+		<div class=""><strong><h5 id="wordIs"> Guess the Word </h5></strong><br><p id="guess" class="lead"></p></div>
+		<br/><br/><br/>
+		<!-- The onscreen keyboard is appended to this following div -->
+		<div id="buttons"> </div> 
+
+	</div>
+	<!-- Play again on single player screen -->
+	<div id="part4" style="display:none">
+		<input id="playAgain" type="button" class="btn btn-primary" value="Play Again">
+	</div>
+
+	<!-- Two Player Host screen -->
+	<div id="part5" style="display:none">
+		
+		<div id="gameHost"class=""><input id="multiWord" type="text" class="form-control" placeholder="Enter a word to guess"><br/>
+			<input id="host_hint" type="text" class="form-control" placeholder="Enter a clue for the word"><br/>
+			<input id="host" type="button" class="btn btn-info" value="Host a Game">
+			<p id="waiting" class="waiting">Waiting for the 2nd Player to connect</p>   
+			<br>
+			<br>
+			<br>
+			<br>
+			<div id="game_events"></div>
+
+		</div>
+		<div id="multians" style="display:none"></div>
+	</div>
+
+	<!-- Two Player Player screen -->
+	<div id="part6" style="display: none">
+		<!-- <input id="mulplay" type="button" class="btn btn-info" value="start game"> -->
+		<div id="typing" class="waiting"><h5>The host is typing the word.Please wait...</h5></div>
+		<div id="block_display">
+			<div id="multi_gameChance" class=""><h5>No. of Chances Left :</h5><p id="multi_count" class="lead">10 </p></div><br>
+			<div class=""><strong><h5 id="multi_wordIs"> Guess the Word </h5></strong><br><p id="multi_guess" class="lead"></p></div>
+			<strong><h5 id="hint" > </h5></strong>
+		</div>
+		<br/><br/><br/>
+		<!-- The onscreen keyboard is appended to this following div -->
+		<div id="multi_buttons"> </div> 
+
+	</div>
+
+	<!-- Div to hold id's which are used during mutiple games -->
+	<div id="part7" style="display:none">
+		<div id="host_id" style="display: none"></div>
+		<div id="host_clientid" style="display: none"></div>
+		<div id="client_id" style="display: none"></div>
+		<div id="client_hostid" style="display: none"></div>
+	</div>
+
+	<script type="text/javascript">
+		var objectSocket = io.connect('http://localhost:8080/');
+		var strIdent = '';
+
+		objectSocket.on('single', function(objectData) {
+			$("#ans").text(objectData.word);
+		});
+
+        /**
+          *Single Player game screen is shown on clicking the single player button
+          *
+          **/
+          jQuery('#single')
+          .on('click', function() {
+          	jQuery("#part1").css("display","none");
+          	jQuery("#part2").css("display","none");
+          	jQuery("#part3").css("display","block");
+          	objectSocket.emit('single', {'word': null,'flag':null});
+
+          })
+          ;
+
+        /**
+          *Following block of code is used to generate the onscreen keyboard 
+          *and display the word to guess
+          **/
+          objectSocket.on('word', function(objectData) {
+
+			//Display the word to guess
+			$("#guess").text(objectData.guessStr);
+			var buttons='';
+			for(var ascii = 65 ; ascii <= 90 ; ascii++){
+
+           //https://www.hacksparrow.com/get-ascii-value-of-character-convert-ascii-to-character-in-javascript.html
+           var letter = String.fromCharCode(ascii);
+           buttons += '<a href="#" class="keyclass btn btn-info" id="'+letter+'"">' + letter +'</a>';
+
+       }
+       $("#buttons").append(buttons);
+
+   });
+
+        /**
+          *On screen keyboard Click event which disables the clicked button and 
+          *passes the clicked button value, the current status of the guess string and
+          * current chnaces left to guess
+          **/
+       //https://stackoverflow.com/questions/1359018/in-jquery-how-to-attach-events-to-dynamic-html-elements
+       //Syntax for Attaching an event to a dynamically gnerated element was taken from the link
+       $('body').on('click', 'a.keyclass', function(event) {
+
+       	$("#"+event.target.id).attr("class","keyclass disabled btn btn-info");
+
+       	var alpha = event.target.text;
+       	objectSocket.emit('guess', {'alpha': alpha , 'word' : $("#guess").text() , 'count': $("#count").text() });
+       });
+
+       /**
+         *Getting the updated string with the last clicked alphabet and updated
+         *chances left and also checking if the game is over by comparing the current 
+         *status of word with the answer and also comparing if enough chances are left
+         *for the player to guess
+         **/ 
+         objectSocket.on('guessUpdate', function(objectData) {
+         	$("#guess").text(objectData.updatedStr);
+         	$("#count").text(objectData.updatedCount);
+         	var checkGame = $("#guess").text().replace(/\s/g,'');
+         	var ans = $("#ans").text().toUpperCase();
+         	if(checkGame === ans){
+         		$("#gameChance").text("You Win!!").addClass("lead");
+         		$("#wordIs").text("The Word is :").addClass("lead");
+         		$("#buttons").css("display","none");
+         		$("#part4").css("display","block");
+         	}
+
+         	if(parseInt($("#count").text()) < 1 ) {
+         		$("#gameChance").text("Better Luck Next Time..").addClass("lead");
+         		$("#wordIs").text("The Word is :").addClass("lead");
+         		$("#guess").text($("#ans").text().toUpperCase());
+		//$(".keyclass").addClass("disabled");
+		$("#buttons").css("display","none");
+		$("#part4").css("display","block");
+	} 
+
+	
+});
+
+      /**
+        *Resetting everything when Play again is clicked by the player
+        *
+        **/ 
+        $("#playAgain").on('click', function() {
+        	$("#gameChance").html('<h5>No. of Chances Left :</h5><p id="count" class="lead">10 </p>');
+        	$("#wordIs").text("Guess the Word :").addClass("lead");
+        	$("#part4").css("display","none");
+        	$("#buttons").css("display","block");
+        	$("#buttons").text("");
+
+
+        	objectSocket.emit('single', {'word': null,'flag':"set"});
+
+        });
+        
+        /**
+          *Displaying the multiplayer game screen when two player button is clicked
+          *
+          **/ 
+          jQuery('#multi')
+          .on('click', function() {
+          	objectSocket.emit('twoPlayer', {'word': null,'flag':null,'name':$("#name").val()});
+
+          	jQuery("#part1").css("display","none");
+          	jQuery("#part2").css("display","none");
+
+          });
+
+        /**
+          *Display the host screen to the player who got connected as a Host
+          *and disable the Host game button
+          **/ 
+          objectSocket.on('host', function(objectData) {
+
+          	jQuery("#part5").css("display","block");
+          	$('#host').addClass("disabled");
+
+          });
+
+
+          /**
+          *Display the player screen to the player who got connected as a Player to the host
+          *and Host is notified that a player has joined
+          **/ 
+          objectSocket.on('hostPlayer', function(objectData) {
+          	objectSocket.emit("notifyHost",{ 'my_host' : $("#client_hostid").text() , 'my_id' : $("#client_id").text()  });
+          	jQuery("#part6").css("display","block");
+          	$("#block_display").css("display","none");
+          });
+
+
+          objectSocket.on('WFHost', function(objectData) {
+          	$("#hint").text("Hint : "+ (objectData.hint).toUpperCase());
+          });
+
+          
+          /**
+            *Generating and appending the buttons for the two player game
+            *
+            **/
+            objectSocket.on('multi_word', function(objectData) {
+            	$("#typing").css("display","none");
+            	$("#block_display").css("display","block");
+            	$("#multi_guess").text(objectData.guessStr);
+
+            	var buttons='';
+            	for(var ascii = 65 ; ascii <= 90 ; ascii++){
+
+             //https://www.hacksparrow.com/get-ascii-value-of-character-convert-ascii-to-character-in-javascript.html
+             var letter = String.fromCharCode(ascii);
+
+             buttons += '<a href="#" class="keyclass1 btn btn-info" id="multi_'+letter+'"">' + letter +'</a>';
+
+         }
+         $("#multi_buttons").append(buttons);
+
+     }); 
+
+          /**
+            *On screen keyboard Click event which disables the clicked button and 
+            *passes the clicked button value, the current status of the guess string and
+            *current chnaces left to guess
+            *Sound is played when a button is pressed
+            **/
+            //https://stackoverflow.com/questions/1359018/in-jquery-how-to-attach-events-to-dynamic-html-elements
+           //Syntax for Attaching an event to a dynamically gnerated element was taken from the link
+           $('body').on('click', 'a.keyclass1', function(event) {
+           	playSound();	
+           	$("#"+event.target.id).attr("class","keyclass1 disabled btn btn-info");
+
+           	var alpha = event.target.text;
+           	objectSocket.emit('multi_guess', {'multi_alpha': alpha , 'multi_word' : $("#multi_guess").text() , 'multi_count': $("#multi_count").text() , 'my_host' : $("#client_hostid").text() });
+           });
+
+           
+          /**
+            *Host enters the word,hint and clicks on host game. 
+            *The client id of the host and host's id are also passed for running multiple games simultaneously
+            **/ 
+            $('#host')
+            .on('click', function() {
+            	objectSocket.emit('hostWord', {'mpword': $("#multiWord").val() , 'hint' : $("#host_hint").val() , 'myclient_id' : $("#host_clientid").text() ,'my_id' : $("#host_id").text()  });
+            });
+            objectSocket.on('enabletext', function(objectData) {
+            	$('#host').removeClass("disabled");
+
+            });
+
+           /**
+             *When 2nd player is connected 
+             *Host button enabled, and wait for 2nd player to connect is hidden
+             *
+             **/ 
+             objectSocket.on('message', function(objectData) {
+             	$('#host').removeClass("disabled");
+             	$('#waiting').removeClass("waiting");
+             	$('#waiting').fadeOut( "slow" );
+             });
+
+           /**
+             *The client passes the alphabet clicked, current status of the word and number of chances left to the server
+             *
+             **/
+             objectSocket.on('word_check', function(objectData) {
+             	objectSocket.emit('multi_wordcheck', {'alpha_entered': objectData.multi_alpha , 'current_word': objectData.multi_word , 'current_count' : objectData.multi_count , 'word' : $("#multiWord").val() , 'client_id' : $("#host_clientid").text() , 'my_id' : $("#host_id").text() });
+             });
+
+           /**
+             *Updatng the guessing word and the chances left count
+             *And also checking if the game is over  and displayign suitable screens based on that
+             **/
+             objectSocket.on('multi_guessUpdate', function(objectData) {
+
+             	$("#multi_count").text(objectData.multi_updatedCount);
+             	$("#multi_guess").text(objectData.multi_updatedStr);
+
+             	if(objectData.game_over === "win"){
+
+             		$("#multi_gameChance").text("You Win!!").addClass("lead");
+             		$("#multi_wordIs").text("The Word is :").addClass("lead");
+             		$("#multi_buttons").css("display","none");
+             		$("#part7").css("display","block");
+             	}
+             	if(objectData.game_over === "lose"){
+             		$("#multi_gameChance").text("Better Luck Next Time..").addClass("lead");
+             		$("#multi_wordIs").text("The Word is :").addClass("lead");
+             		$("#multi_guess").text((objectData.answer).toUpperCase());
+             		$("#multi_buttons").css("display","none");
+             		$("#part7").css("display","block");
+             	}
+
+
+             });
+
+           /**
+             *Displaying game events on the host window
+             *Game over is displayed based on the value passed from the server
+             **/
+             objectSocket.on('Host_guessUpdate', function(objectData) {
+             	$("#game_events").append("Word Status : "+ objectData.multi_updatedStr + "<br>");
+             	$("#game_events").append("Chances Left : "+ objectData.multi_updatedCount);
+             	$("#game_events").append("<br><br>");
+
+             	if(objectData.game_over === "win"){
+             		$("#game_events").html("<h5>Game Over!</h5>");	
+             	}
+             	if(objectData.game_over === "lose"){
+             		$("#game_events").html("<h5>Game Over!</h5>");
+             	}
+
+             });
+             
+            /**
+              *getting the id's of player and players's host in multiplayer game
+              *
+              **/
+              objectSocket.on('self_id', function(objectData) {
+              	console.log("my id " + objectData.id);
+              	$("#client_id").text(objectData.id);
+              	$("#client_hostid").text(objectData.my_host);
+              });
+
+            /**
+              *getting the id's of host and host's player in multiplayer game
+              *
+              **/
+              objectSocket.on('host_id', function(objectData) {
+              	console.log("my id " + objectData.id);
+              	$("#host_id").text(objectData.id);
+              	$("#host_clientid").text(objectData.my_client);
+              });
+
+             /**
+             *Playing sound for the onscreen keyboard button click in multiplayer game
+             *
+             **/
+             function playSound() {
+             	var sound = document.getElementById("audio");
+             	sound.play();
+             }	
+
+         </script>
+     </body>
+     </html>
